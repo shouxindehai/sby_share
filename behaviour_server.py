@@ -2,10 +2,13 @@ import pymongo
 import json
 import difflib
 import random
+import flask
+from flask import request
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["cuckoo"]
- 
+server = flask.Flask(__name__)
+@server.route('/likely', methods=['get'])
 
 def find_record(task_id):
     record = mydb["analysis"].find_one({"info.id": int(task_id)})
@@ -42,11 +45,13 @@ def min_distance(s1, s2):
                 d[y][x] = min(add, substute, delete)
     return d[-1][-1]
 
-if __name__ == "__main__":
+def likely():
     
     task_table = {}
     task_id = []
-    for i in range(1, 5):
+    first = request.values.get('first')
+    second = request.values.get('second')
+    for i in range(first, second):
         task_id.append(i)
 
     for t_id in task_id:
@@ -55,17 +60,20 @@ if __name__ == "__main__":
         task_table[t_id] = api_list
 
     # random change apilist
-    for i in range(30):
-        r1 = random.randint(0, len(task_table[2]) - 1)
-        r2 = random.randint(0, len(task_table[2]) - 1)
-        task_table[2].insert(r1, task_table[2][r2])
+    # for i in range(30):
+    #     r1 = random.randint(0, len(task_table[2]) - 1)
+    #     r2 = random.randint(0, len(task_table[2]) - 1)
+    #     task_table[2].insert(r1, task_table[2][r2])
 
  
     # sm = difflib.SequenceMatcher(None, task_table[1], task_table[2])
-    # print(sm.ratio())
+    # print(sm.ratio())：
 
-    distance = float(min_distance(task_table[2], task_table[1]))
+    distance = float(min_distance(task_table[first], task_table[second]))
     print(distance)
-    length = float(len(task_table[1]) + len(task_table[2]))
+    length = float(len(task_table[first]) + len(task_table[second]))
     likely = 1 - (2 * distance) / length
-    print(likely)
+    return json.dumps(likely)
+
+if __name__ == "__main__":
+    server.run(debug=True, port=8091, host='192.168.6.128')
